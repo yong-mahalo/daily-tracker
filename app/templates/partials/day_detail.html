@@ -1,0 +1,16 @@
+{% if has_data %}
+  <div class="day-detail-header">
+    <span class="day-detail-date">{{ date }}</span>
+    <span class="day-detail-hint">tap another cell to switch</span>
+  </div>
+  <div class="goal-cards">
+    {% for goal in goals %}
+      {% include "partials/goal_card.html" %}
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state">
+    <p>No entry for {{ date }}</p>
+    <small>Use the form above to log your progress.</small>
+  </div>
+{% endif %}

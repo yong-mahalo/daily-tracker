@@ -1,0 +1,37 @@
+{% set goal_label = config.goal_labels.get(goal, goal) %}
+{% set summary = summaries_by_goal.get(goal) %}
+{% set task_list = tasks_by_goal.get(goal, []) %}
+
+<div class="goal-card {{ goal }}">
+  <div class="goal-card-header">
+    <div class="goal-card-title">
+      <span class="goal-color-dot"></span>
+      {{ goal_label }}
+    </div>
+    {% if summary %}
+      <span class="task-count-chip">{{ summary.task_count }} task{% if summary.task_count != 1 %}s{% endif %}</span>
+    {% endif %}
+  </div>
+
+  {% if summary %}
+    <p class="goal-summary">{{ summary.summary_text }}</p>
+  {% endif %}
+
+  {% if task_list %}
+    <ul class="task-list">
+      {% for task in task_list %}
+        <li class="task-item">
+          <span class="task-status-icon">
+            {% if task.status == 'done' %}✓{% elif task.status == 'in_progress' %}◐{% else %}·{% endif %}
+          </span>
+          <span>{{ task.task_text }}</span>
+          <span class="task-meta">
+            {% if task.category %}{{ task.category }}{% endif %}{% if task.effort_minutes %} · {{ task.effort_minutes }}m{% endif %}
+          </span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% elif not summary %}
+    <p class="no-activity">No activity logged.</p>
+  {% endif %}
+</div>

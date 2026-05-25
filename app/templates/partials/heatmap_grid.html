@@ -1,0 +1,87 @@
+{% set prev_month = month - 1 if month > 1 else 12 %}
+{% set prev_year  = year if month > 1 else year - 1 %}
+{% set next_month = month + 1 if month < 12 else 1 %}
+{% set next_year  = year if month < 12 else year + 1 %}
+
+<div id="heatmap-section">
+  <div class="month-nav">
+    <button class="month-nav-btn"
+      hx-get="/calendar?year={{ prev_year }}&month={{ prev_month }}"
+      hx-target="#heatmap-section"
+      hx-swap="outerHTML">‹</button>
+    <span class="month-label">{{ month_name }}</span>
+    <button class="month-nav-btn"
+      hx-get="/calendar?year={{ next_year }}&month={{ next_month }}"
+      hx-target="#heatmap-section"
+      hx-swap="outerHTML">›</button>
+  </div>
+
+  <div class="heatmap-wrap">
+    <table class="heatmap-table" aria-label="Activity calendar {{ month_name }}">
+      <thead>
+        <tr>
+          <th>M</th><th>T</th><th>W</th><th>T</th><th>F</th><th>S</th><th>S</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set ns = namespace(week=[]) %}
+        {# Pad start of first week #}
+        {% set first_weekday = cells[0].weekday %}
+        {% for _ in range(first_weekday) %}
+          {% set ns.week = ns.week + [none] %}
+        {% endfor %}
+
+        {% for cell in cells %}
+          {% set ns.week = ns.week + [cell] %}
+          {% if ns.week|length == 7 %}
+            <tr>
+              {% for c in ns.week %}
+                {% if c is none %}
+                  <td></td>
+                {% else %}
+                  <td
+                    class="day-cell {% if c.date == today %}today{% endif %} {% if c.has_entry %}active{% endif %}"
+                    {% if c.gradient_css %}style="{{ c.gradient_css }}"{% endif %}
+                    hx-get="/day/{{ c.date }}"
+                    hx-target="#day-detail-panel"
+                    hx-swap="innerHTML"
+                    title="{{ c.date }} — {{ c.total_tasks }} task{% if c.total_tasks != 1 %}s{% endif %}"
+                    role="button"
+                    aria-label="{{ c.date }}"
+                  ></td>
+                {% endif %}
+              {% endfor %}
+            </tr>
+            {% set ns.week = [] %}
+          {% endif %}
+        {% endfor %}
+
+        {# Render last partial week #}
+        {% if ns.week %}
+          <tr>
+            {% for c in ns.week %}
+              {% if c is none %}
+                <td></td>
+              {% else %}
+                <td
+                  class="day-cell {% if c.date == today %}today{% endif %}"
+                  {% if c.gradient_css %}style="{{ c.gradient_css }}"{% endif %}
+                  hx-get="/day/{{ c.date }}"
+                  hx-target="#day-detail-panel"
+                  hx-swap="innerHTML"
+                  title="{{ c.date }} — {{ c.total_tasks }} task{% if c.total_tasks != 1 %}s{% endif %}"
+                  role="button"
+                  aria-label="{{ c.date }}"
+                ></td>
+              {% endif %}
+            {% endfor %}
+            {# Pad end of last week #}
+            {% for _ in range(7 - ns.week|length) %}
+              <td></td>
+            {% endfor %}
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>

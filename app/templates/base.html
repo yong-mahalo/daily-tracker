@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Daily Tracker</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#0d0f14">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Tracker">
+  <link rel="apple-touch-icon" href="/static/icon-192.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+  <style>
+    /* ── Design tokens ── */
+    :root {
+      --color-phd:        #60A5FA;   /* softer blue */
+      --color-nl:         #FB923C;   /* softer orange */
+      --color-cn:         #F87171;   /* softer red */
+      --cell-size:        18px;
+      --cell-gap:         4px;
+      --cell-radius:      4px;
+      --card-radius:      12px;
+      --surface:          rgba(255,255,255,0.04);
+      --surface-hover:    rgba(255,255,255,0.07);
+      --border:           rgba(255,255,255,0.08);
+      --text-muted:       rgba(255,255,255,0.38);
+      --text-secondary:   rgba(255,255,255,0.60);
+    }
+
+    /* ── Base ── */
+    *, *::before, *::after { box-sizing: border-box; }
+    html { font-family: 'Inter', system-ui, sans-serif; }
+    body {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+      background: #0d0f14;
+      color: rgba(255,255,255,0.88);
+    }
+
+    /* ── Header ── */
+    .site-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .site-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: rgba(255,255,255,0.9);
+      margin: 0;
+    }
+    .goal-dots { display: flex; gap: 0.5rem; align-items: center; }
+    .goal-dot {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.7rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      letter-spacing: 0.02em;
+    }
+    .goal-dot::before {
+      content: '';
+      display: block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+    .goal-dot.phd::before    { background: var(--color-phd); box-shadow: 0 0 6px var(--color-phd); }
+    .goal-dot.nl::before     { background: var(--color-nl);  box-shadow: 0 0 6px var(--color-nl); }
+    .goal-dot.cn::before     { background: var(--color-cn);  box-shadow: 0 0 6px var(--color-cn); }
+
+    /* ── Section labels ── */
+    .section-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin: 0 0 1rem;
+    }
+
+    /* ── Heatmap — neutralise Pico's table opinionated styles ── */
+    /* Only border and padding need !important — leave background alone so
+       inline gradient styles on active cells are respected */
+    .heatmap-table th,
+    .heatmap-table td  { border: none !important; padding: 0 !important; }
+    .heatmap-table     { border-collapse: separate !important; border-spacing: var(--cell-gap) !important; table-layout: fixed; width: max-content; }
+
+    .heatmap-wrap { overflow-x: auto; padding-bottom: 0.5rem; }
+
+    .heatmap-table th {
+      font-size: 0.6rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-align: center;
+      width: var(--cell-size);
+      padding-bottom: 6px !important;
+    }
+
+    /* Default (empty) cell — background set here; active cells override via inline style */
+    .day-cell {
+      width: var(--cell-size);
+      height: var(--cell-size);
+      border-radius: var(--cell-radius);
+      background-color: rgba(255,255,255,0.07);
+      cursor: pointer;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+      outline: none !important;
+      position: relative;
+    }
+    .day-cell:hover {
+      transform: scale(1.55);
+      z-index: 10;
+      box-shadow: 0 0 0 1.5px rgba(255,255,255,0.4), 0 4px 14px rgba(0,0,0,0.5);
+    }
+    .day-cell.today { box-shadow: 0 0 0 1.5px rgba(255,255,255,0.5); }
+    .day-cell.active:hover {
+      box-shadow: 0 0 0 1.5px rgba(255,255,255,0.6), 0 4px 18px rgba(0,0,0,0.55);
+    }
+
+    /* ── Month nav ── */
+    .month-nav {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .month-nav-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.2rem 0.55rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: background 0.1s;
+      line-height: 1.5;
+    }
+    .month-nav-btn:hover { background: var(--surface-hover); }
+    .month-label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.8);
+      min-width: 90px;
+    }
+
+    /* ── Heatmap legend ── */
+    .heatmap-legend {
+      display: flex;
+      gap: 1rem;
+      margin-top: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.68rem;
+      color: var(--text-muted);
+    }
+    .legend-swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+
+    /* ── Goal cards ── */
+    .goal-cards { display: flex; flex-direction: column; gap: 0.75rem; }
+    .goal-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--card-radius);
+      padding: 1rem 1.1rem;
+      position: relative;
+      overflow: hidden;
+      animation: fadeSlide 0.18s ease both;
+    }
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .goal-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      border-radius: 12px 12px 0 0;
+    }
+    .goal-card.phd::before     { background: var(--color-phd); box-shadow: 0 0 12px var(--color-phd); }
+    .goal-card.nl_jobs::before { background: var(--color-nl);  box-shadow: 0 0 12px var(--color-nl); }
+    .goal-card.china_jobs::before { background: var(--color-cn); box-shadow: 0 0 12px var(--color-cn); }
+
+    .goal-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+    .goal-card-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.85);
+    }
+    .goal-color-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .phd .goal-color-dot     { background: var(--color-phd); box-shadow: 0 0 5px var(--color-phd); }
+    .nl_jobs .goal-color-dot { background: var(--color-nl);  box-shadow: 0 0 5px var(--color-nl); }
+    .china_jobs .goal-color-dot { background: var(--color-cn); box-shadow: 0 0 5px var(--color-cn); }
+    .task-count-chip {
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: rgba(255,255,255,0.06);
+      border-radius: 99px;
+      padding: 0.1rem 0.5rem;
+    }
+    .goal-summary {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin: 0 0 0.6rem;
+    }
+    .task-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+    .task-item {
+      display: flex;
+      align-items: baseline;
+      gap: 0.45rem;
+      font-size: 0.76rem;
+      color: rgba(255,255,255,0.65);
+      padding: 0.25rem 0;
+      border-top: 1px solid var(--border);
+    }
+    .task-item:first-child { border-top: none; padding-top: 0; }
+    .task-status-icon { flex-shrink: 0; font-size: 0.65rem; }
+    .task-meta {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      margin-left: auto;
+      white-space: nowrap;
+    }
+    .no-activity {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    /* ── Day detail header ── */
+    .day-detail-header {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .day-detail-date {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.9);
+      letter-spacing: -0.02em;
+    }
+    .day-detail-hint {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    /* ── Empty state ── */
+    .empty-state {
+      text-align: center;
+      padding: 2.5rem 0;
+      color: var(--text-muted);
+    }
+    .empty-state p { margin: 0 0 0.25rem; font-size: 0.85rem; }
+    .empty-state small { font-size: 0.75rem; }
+
+    /* ── Log form ── */
+    .form-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--card-radius);
+      padding: 1.25rem 1.25rem 1rem;
+      margin-bottom: 0.5rem;
+    }
+    .form-card textarea {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: rgba(255,255,255,0.85);
+      font-family: inherit;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      resize: vertical;
+      width: 100%;
+      padding: 0.75rem;
+      margin: 0.75rem 0 0.5rem;
+      transition: border-color 0.15s;
+    }
+    .form-card textarea:focus {
+      outline: none;
+      border-color: rgba(96,165,250,0.4);
+      box-shadow: 0 0 0 3px rgba(96,165,250,0.08);
+    }
+    .form-card textarea::placeholder { color: var(--text-muted); }
+    .form-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .char-count { font-size: 0.7rem; color: var(--text-muted); }
+    .submit-btn {
+      background: rgba(96,165,250,0.15);
+      border: 1px solid rgba(96,165,250,0.25);
+      border-radius: 8px;
+      color: var(--color-phd);
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.45rem 1rem;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      font-family: inherit;
+    }
+    .submit-btn:hover:not(:disabled) {
+      background: rgba(96,165,250,0.22);
+      transform: translateY(-1px);
+    }
+    .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── Section divider ── */
+    .divider { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+
+    /* ── Log result ── */
+    .log-result-card {
+      background: rgba(34,197,94,0.06);
+      border: 1px solid rgba(34,197,94,0.18);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      margin-top: 0.75rem;
+    }
+    .log-result-card.error {
+      background: rgba(239,68,68,0.06);
+      border-color: rgba(239,68,68,0.2);
+    }
+
+    /* ── Loading spinner ── */
+    [x-cloak] { display: none !important; }
+    .spinner {
+      display: inline-block;
+      width: 0.85rem;
+      height: 0.85rem;
+      border: 1.5px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.65s linear infinite;
+      vertical-align: middle;
+      margin-right: 0.3rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+
+    /* ── Mobile ── */
+    @media (max-width: 600px) {
+      body { padding: 1rem 1rem 5rem; }
+      .site-header { margin-bottom: 1.5rem; padding-bottom: 1rem; }
+      .goal-dots { gap: 0.3rem; }
+      .goal-dot { font-size: 0.65rem; }
+
+      /* Bigger tap targets on form */
+      .form-card textarea { font-size: 1rem; min-height: 7rem; }
+      .submit-btn {
+        font-size: 0.95rem;
+        padding: 0.75rem 1.5rem;
+        width: 100%;
+        margin-top: 0.5rem;
+      }
+      .form-footer { flex-direction: column; align-items: stretch; gap: 0.5rem; }
+      .char-count { text-align: right; }
+
+      /* Heatmap: smaller cells to fit on phone */
+      :root { --cell-size: 14px; --cell-gap: 3px; }
+
+      /* Day detail cards stacked nicely */
+      .goal-cards { gap: 0.6rem; }
+      .goal-card { padding: 0.85rem 0.9rem; }
+
+      /* Fixed quick-log bar at bottom (iOS-style) */
+      .mobile-quick-log {
+        display: flex;
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        background: rgba(13,15,20,0.97);
+        border-top: 1px solid var(--border);
+        padding: 0.6rem 1rem;
+        padding-bottom: calc(0.6rem + env(safe-area-inset-bottom));
+        z-index: 100;
+        gap: 0.5rem;
+        align-items: center;
+        backdrop-filter: blur(12px);
+      }
+      .mobile-quick-log input {
+        flex: 1;
+        background: rgba(255,255,255,0.07);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 0.5rem 1rem;
+        color: rgba(255,255,255,0.88);
+        font-size: 0.9rem;
+        font-family: inherit;
+        outline: none;
+      }
+      .mobile-quick-log input::placeholder { color: var(--text-muted); }
+      .mobile-quick-log button {
+        background: rgba(96,165,250,0.2);
+        border: 1px solid rgba(96,165,250,0.3);
+        border-radius: 20px;
+        color: var(--color-phd);
+        font-size: 0.85rem;
+        font-weight: 600;
+        padding: 0.5rem 1rem;
+        white-space: nowrap;
+        font-family: inherit;
+        cursor: pointer;
+      }
+    }
+    @media (min-width: 601px) {
+      .mobile-quick-log { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <p class="site-title">Daily Tracker</p>
+    <div class="goal-dots">
+      <span class="goal-dot phd">PhD</span>
+      <span class="goal-dot nl">NL Jobs</span>
+      <span class="goal-dot cn">China Jobs</span>
+    </div>
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Mobile quick-log bar (only visible on phones) -->
+  <div class="mobile-quick-log" id="mobile-log-bar">
+    <input type="text" id="mobile-log-input" placeholder="Quick log… e.g. phd - read papers">
+    <button id="mobile-log-btn">Log ✦</button>
+  </div>
+
+  <script>
+    // Register service worker for PWA
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+    }
+
+    // Mobile quick-log
+    document.getElementById('mobile-log-btn').addEventListener('click', function() {
+      const input = document.getElementById('mobile-log-input');
+      const text = input.value.trim();
+      if (!text) return;
+      const btn = this;
+      btn.textContent = '…';
+      btn.disabled = true;
+      const form = new FormData();
+      form.append('raw_text', text);
+      form.append('entry_date', new Date().toISOString().slice(0,10));
+      fetch('/api/log', { method: 'POST', body: form })
+        .then(r => r.ok ? r.text() : Promise.reject(r.status))
+        .then(() => {
+          input.value = '';
+          btn.textContent = '✓';
+          btn.style.color = '#4ade80';
+          setTimeout(() => { btn.textContent = 'Log ✦'; btn.style.color = ''; btn.disabled = false; }, 2000);
+          // Refresh heatmap if htmx is available
+          if (window.htmx) htmx.ajax('GET', location.pathname, { target: 'main', swap: 'innerHTML' });
+        })
+        .catch(() => {
+          btn.textContent = '✗';
+          btn.style.color = '#f87171';
+          setTimeout(() => { btn.textContent = 'Log ✦'; btn.style.color = ''; btn.disabled = false; }, 2000);
+        });
+    });
+
+    // Submit on Enter in mobile input
+    document.getElementById('mobile-log-input').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') document.getElementById('mobile-log-btn').click();
+    });
+  </script>
+</body>
+</html>

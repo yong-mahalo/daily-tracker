@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- ── Log form ─────────────────────────────────────────── -->
+<p class="section-label">Today's Log</p>
+
+<div x-data="{ loading: false, charCount: 0 }">
+  <div class="form-card">
+    <form
+      id="log-form"
+      hx-post="/api/log"
+      hx-target="#log-result"
+      hx-swap="innerHTML"
+      hx-on::after-request="loading = false"
+      @submit="loading = true"
+    >
+      <textarea
+        name="raw_text"
+        rows="4"
+        placeholder="Brain-dump what you did today — e.g. Emailed Prof. van den Heuvel at TU Delft about HCI lab. Applied to ASML UX role. Reviewed Alibaba DAMO posting. Practiced Dutch for 30 min."
+        @input="charCount = $el.value.length"
+        required
+      ></textarea>
+      <input type="hidden" name="entry_date" value="{{ today }}">
+      <div class="form-footer">
+        <span class="char-count" x-text="charCount ? charCount + ' chars' : 'start typing…'">start typing…</span>
+        <button type="submit" class="submit-btn" :disabled="loading">
+          <span x-show="loading" x-cloak class="spinner"></span>
+          <span x-show="!loading">Parse &amp; Log ✦</span>
+          <span x-show="loading" x-cloak>Parsing…</span>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div id="log-result"></div>
+</div>
+
+<hr class="divider">
+
+<!-- ── Heatmap ──────────────────────────────────────────── -->
+<p class="section-label">Activity</p>
+
+{% include "partials/heatmap_grid.html" %}
+
+<div class="heatmap-legend">
+  <span class="legend-item">
+    <span class="legend-swatch" style="background:var(--color-phd);"></span> PhD
+  </span>
+  <span class="legend-item">
+    <span class="legend-swatch" style="background:var(--color-nl);"></span> NL Jobs
+  </span>
+  <span class="legend-item">
+    <span class="legend-swatch" style="background:var(--color-cn);"></span> China Jobs
+  </span>
+</div>
+
+<hr class="divider">
+
+<!-- ── Day detail ───────────────────────────────────────── -->
+<p class="section-label">Day Detail</p>
+
+<div id="day-detail-panel">
+  <div class="empty-state">
+    <p>Select a day to see the breakdown.</p>
+  </div>
+</div>
+
+<script>
+  document.body.addEventListener("htmx:afterSwap", function(evt) {
+    if (evt.detail.target && evt.detail.target.id === "log-result") {
+      document.getElementById("log-form").reset();
+      // Dispatch custom event so Alpine resets charCount
+      document.querySelector('[x-data]').dispatchEvent(new CustomEvent('reset-count'));
+      htmx.ajax("GET", "/calendar?year={{ year }}&month={{ month }}", {
+        target: "#heatmap-section", swap: "outerHTML"
+      });
+    }
+  });
+</script>
+{% endblock %}
