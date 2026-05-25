@@ -22,9 +22,6 @@
   <style>
     /* ── Design tokens ── */
     :root {
-      --color-phd:        #60A5FA;   /* softer blue */
-      --color-nl:         #FB923C;   /* softer orange */
-      --color-cn:         #F87171;   /* softer red */
       --cell-size:        18px;
       --cell-gap:         4px;
       --cell-radius:      4px;
@@ -34,6 +31,7 @@
       --border:           rgba(255,255,255,0.08);
       --text-muted:       rgba(255,255,255,0.38);
       --text-secondary:   rgba(255,255,255,0.60);
+      --accent:           #60A5FA;
     }
 
     /* ── Base ── */
@@ -79,10 +77,9 @@
       width: 7px;
       height: 7px;
       border-radius: 50%;
+      background: var(--goal-color, #888);
+      box-shadow: 0 0 6px var(--goal-color, #888);
     }
-    .goal-dot.phd::before    { background: var(--color-phd); box-shadow: 0 0 6px var(--color-phd); }
-    .goal-dot.nl::before     { background: var(--color-nl);  box-shadow: 0 0 6px var(--color-nl); }
-    .goal-dot.cn::before     { background: var(--color-cn);  box-shadow: 0 0 6px var(--color-cn); }
 
     /* ── Section labels ── */
     .section-label {
@@ -201,9 +198,7 @@
       height: 2px;
       border-radius: 12px 12px 0 0;
     }
-    .goal-card.phd::before     { background: var(--color-phd); box-shadow: 0 0 12px var(--color-phd); }
-    .goal-card.nl_jobs::before { background: var(--color-nl);  box-shadow: 0 0 12px var(--color-nl); }
-    .goal-card.china_jobs::before { background: var(--color-cn); box-shadow: 0 0 12px var(--color-cn); }
+    .goal-card::before { background: var(--goal-color, #888); box-shadow: 0 0 12px var(--goal-color, #888); }
 
     .goal-card-header {
       display: flex;
@@ -225,9 +220,7 @@
       border-radius: 50%;
       flex-shrink: 0;
     }
-    .phd .goal-color-dot     { background: var(--color-phd); box-shadow: 0 0 5px var(--color-phd); }
-    .nl_jobs .goal-color-dot { background: var(--color-nl);  box-shadow: 0 0 5px var(--color-nl); }
-    .china_jobs .goal-color-dot { background: var(--color-cn); box-shadow: 0 0 5px var(--color-cn); }
+    .goal-card .goal-color-dot { background: var(--goal-color, #888); box-shadow: 0 0 5px var(--goal-color, #888); }
     .task-count-chip {
       font-size: 0.65rem;
       font-weight: 600;
@@ -326,6 +319,102 @@
       outline: none;
       border-color: rgba(96,165,250,0.4);
       box-shadow: 0 0 0 3px rgba(96,165,250,0.08);
+    }
+    /* ── Settings page ── */
+    .settings-link {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .settings-link:hover { background: var(--surface-hover); color: var(--text-secondary); }
+    .goals-list { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem; }
+    .goal-row {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--card-radius);
+      padding: 1rem 1.1rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .goal-row::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--goal-color, #888);
+      box-shadow: 0 0 12px var(--goal-color, #888);
+    }
+    .goal-row-key {
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-bottom: 0.6rem;
+    }
+    .goal-form-grid {
+      display: grid;
+      grid-template-columns: 1fr 90px;
+      gap: 0.6rem;
+      align-items: end;
+    }
+    .goal-form-grid label {
+      display: block;
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 0.25rem;
+    }
+    .goal-form-grid input[type="text"],
+    .goal-form-grid input[type="number"] {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.4rem 0.55rem;
+      color: rgba(255,255,255,0.88);
+      font-size: 0.82rem;
+      font-family: inherit;
+    }
+    .goal-form-grid input[type="color"] {
+      width: 100%;
+      height: 32px;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2px;
+      cursor: pointer;
+    }
+    .goal-row-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.6rem;
+      justify-content: flex-end;
+    }
+    .btn-secondary, .btn-danger {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.35rem 0.85rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-secondary:hover { background: var(--surface-hover); }
+    .btn-danger { color: rgba(248,113,113,0.85); border-color: rgba(248,113,113,0.25); }
+    .btn-danger:hover { background: rgba(248,113,113,0.1); }
+    .settings-error {
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.22);
+      border-radius: 8px;
+      padding: 0.55rem 0.9rem;
+      font-size: 0.78rem;
+      color: rgba(248,113,113,0.9);
+      margin-bottom: 1rem;
     }
     .form-card textarea::placeholder { color: var(--text-muted); }
     .form-footer {
@@ -459,11 +548,14 @@
 </head>
 <body>
   <header class="site-header">
-    <p class="site-title">Daily Tracker</p>
+    <a href="/" style="text-decoration:none;color:inherit;">
+      <p class="site-title">Daily Tracker</p>
+    </a>
     <div class="goal-dots">
-      <span class="goal-dot phd">PhD</span>
-      <span class="goal-dot nl">NL Jobs</span>
-      <span class="goal-dot cn">China Jobs</span>
+      {% for g in goals %}
+        <span class="goal-dot" style="--goal-color: {{ g.color }}">{{ g.label }}</span>
+      {% endfor %}
+      <a class="settings-link" href="/settings" title="Manage goals">⚙</a>
     </div>
   </header>
 

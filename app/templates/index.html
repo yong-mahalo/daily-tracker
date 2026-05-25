@@ -17,7 +17,7 @@
       <textarea
         name="raw_text"
         rows="4"
-        placeholder="Brain-dump what you did today — e.g. Emailed Prof. van den Heuvel at TU Delft about HCI lab. Applied to ASML UX role. Reviewed Alibaba DAMO posting. Practiced Dutch for 30 min."
+        placeholder="Brain-dump what you did today across your goals — the LLM will sort it into the right tracks."
         @input="charCount = $el.value.length"
         required
       ></textarea>
@@ -44,15 +44,11 @@
 {% include "partials/heatmap_grid.html" %}
 
 <div class="heatmap-legend">
-  <span class="legend-item">
-    <span class="legend-swatch" style="background:var(--color-phd);"></span> PhD
-  </span>
-  <span class="legend-item">
-    <span class="legend-swatch" style="background:var(--color-nl);"></span> NL Jobs
-  </span>
-  <span class="legend-item">
-    <span class="legend-swatch" style="background:var(--color-cn);"></span> China Jobs
-  </span>
+  {% for g in goals %}
+    <span class="legend-item">
+      <span class="legend-swatch" style="background: {{ g.color }};"></span> {{ g.label }}
+    </span>
+  {% endfor %}
 </div>
 
 <hr class="divider">

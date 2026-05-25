@@ -1,24 +1,15 @@
-"""
-Notion sync — mirrors phd_tracker.py pattern exactly:
-plain requests.post(), NOTION_HEADERS constant, direct JSON property building.
-"""
+"""Notion sync — one-way push of tasks to per-goal Notion databases."""
 import requests
 
 from app import database as db
 from app.config import CONFIG, NOTION_TOKEN
+from app.services import goals as goal_repo
 
 NOTION_VERSION = "2022-06-28"
 NOTION_HEADERS = {
     "Authorization": f"Bearer {NOTION_TOKEN}",
     "Content-Type": "application/json",
     "Notion-Version": NOTION_VERSION,
-}
-
-# Map goal → config key for DB ID
-_DB_ID_KEYS = {
-    "phd": "notion_phd_db_id",
-    "nl_jobs": "notion_nl_db_id",
-    "china_jobs": "notion_china_db_id",
 }
 
 
@@ -31,10 +22,12 @@ def sync_task(task_id: int) -> str:
     if not task:
         raise ValueError(f"Task {task_id} not found")
 
-    goal = task["goal"]
-    db_id = CONFIG.get(_DB_ID_KEYS.get(goal, ""), "")
+    goal = goal_repo.get_goal(task["goal"])
+    if not goal:
+        raise ValueError(f"Goal definition missing for key: {task['goal']}")
+    db_id = goal.get("notion_db_id") or ""
     if not db_id:
-        raise ValueError(f"Notion DB ID not configured for goal: {goal}")
+        raise ValueError(f"Notion DB ID not configured for goal: {task['goal']}")
 
     payload = {
         "parent": {"database_id": db_id},
@@ -60,7 +53,6 @@ def sync_task(task_id: int) -> str:
         },
     }
 
-    # Remove null number field (Notion rejects null for number)
     if task["effort_minutes"] is None:
         del payload["properties"]["Effort (min)"]
 

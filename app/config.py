@@ -6,25 +6,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Locate config.json relative to this file's package root
 _CONFIG_PATH = Path(__file__).parent.parent / "config.json"
 
 _DEFAULT_CONFIG = {
-    "notion_phd_db_id": "",
-    "notion_nl_db_id": "",
-    "notion_china_db_id": "",
-    "notion_sync_enabled": False,
     "llm_model": "claude-sonnet-4-6",
-    "goal_colors": {
-        "phd": "#3B82F6",
-        "nl_jobs": "#F97316",
-        "china_jobs": "#EF4444",
-    },
-    "goal_labels": {
-        "phd": "PhD Positions",
-        "nl_jobs": "Netherlands Jobs",
-        "china_jobs": "China Jobs",
-    },
+    "notion_sync_enabled": False,
 }
 
 

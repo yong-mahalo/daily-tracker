@@ -3,9 +3,10 @@
   "configurations": [
     {
       "name": "daily-tracker",
-      "runtimeExecutable": ".venv/bin/uvicorn",
-      "runtimeArgs": ["app.main:app", "--reload", "--port", "8090"],
-      "port": 8090
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", ".venv/bin/uvicorn app.main:app --reload --port $PORT --host 127.0.0.1"],
+      "port": 8091,
+      "env": { "DATABASE_PATH": "/tmp/daily_tracker_preview.db" }
     }
   ]
 }

@@ -10,30 +10,26 @@
 //
 //  LOCAL (same WiFi): use http://YOUR_MAC_IP:8090  (Mac must be on)
 //  CLOUD (Railway):   use https://your-app.up.railway.app
+//
+//  Goals (label + color) are read from the /api/widget response, so this file
+//  does not need editing when you add or rename goals via /settings.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const BASE_URL  = "http://192.168.0.112:8090";  // ← local Mac (same WiFi)
 // const BASE_URL = "https://your-app.up.railway.app";  // ← uncomment after Railway deploy
 const WEB_URL   = BASE_URL;
 
-// ── Colours ──────────────────────────────────────────────────────────────────
+// ── Static colours (everything except per-goal colours) ──────────────────────
 const C = {
-  phd:    new Color("#60A5FA"),   // soft blue
-  nl:     new Color("#FB923C"),   // soft orange
-  cn:     new Color("#F87171"),   // soft red
-  bg:     new Color("#0d0f14"),   // near-black
-  card:   new Color("#161921"),   // card surface
+  bg:     new Color("#0d0f14"),
+  card:   new Color("#161921"),
   border: new Color("#FFFFFF", 0.07),
   text:   new Color("#FFFFFF", 0.88),
   sub:    new Color("#FFFFFF", 0.55),
   muted:  new Color("#FFFFFF", 0.32),
-  streak: new Color("#FBBF24"),   // amber for streak fire
+  streak: new Color("#FBBF24"),
   empty:  new Color("#FFFFFF", 0.07),
 };
-
-const GOAL_KEYS    = ["phd", "nl_jobs", "china_jobs"];
-const GOAL_LABELS  = { phd: "PhD", nl_jobs: "NL Jobs", china_jobs: "China" };
-const GOAL_COLORS  = { phd: C.phd, nl_jobs: C.nl, china_jobs: C.cn };
 
 // ── Fetch data ────────────────────────────────────────────────────────────────
 async function fetchWidget() {
@@ -54,7 +50,6 @@ async function buildWidget(data) {
   w.setPadding(14, 16, 14, 16);
 
   if (!data) {
-    // ── Offline / error state ──
     const err = w.addText("⚠ Tracker offline");
     err.textColor = C.muted;
     err.font = Font.mediumSystemFont(13);
@@ -63,7 +58,8 @@ async function buildWidget(data) {
 
   const today   = data.today;
   const streak  = data.streak;
-  const goals   = today.goals;
+  const goalDefs = data.goals || [];
+  const byGoal  = today.by_goal || {};
 
   // ── Header row ───────────────────────────────────────────────────────────
   const header = w.addStack();
@@ -77,7 +73,6 @@ async function buildWidget(data) {
 
   header.addSpacer();
 
-  // Streak chip
   if (streak.current_days > 0) {
     const streakStack = header.addStack();
     streakStack.layoutHorizontally();
@@ -96,85 +91,85 @@ async function buildWidget(data) {
   w.addSpacer(8);
 
   // ── Date subheader ─────────────────────────────────────────────────────────
-  const dateStr = formatDate(today.date);
-  const dateTxt = w.addText(dateStr);
+  const dateTxt = w.addText(formatDate(today.date));
   dateTxt.textColor = C.muted;
   dateTxt.font = Font.systemFont(10);
 
   w.addSpacer(10);
 
-  // ── Goal rows ──────────────────────────────────────────────────────────────
-  for (const key of GOAL_KEYS) {
-    const g     = goals[key];
-    const color = GOAL_COLORS[key];
-    const count = g.tasks;
-    const max   = Math.max(...GOAL_KEYS.map(k => goals[k].tasks), 1);
+  // ── Goal rows (dynamic; one per goal returned by the API) ───────────────
+  if (goalDefs.length === 0) {
+    const none = w.addText("No goals configured. Open Settings.");
+    none.textColor = C.muted;
+    none.font = Font.systemFont(11);
+  } else {
+    const maxCount = Math.max(...goalDefs.map(g => (byGoal[g.key]?.tasks ?? 0)), 1);
 
-    const row = w.addStack();
-    row.layoutHorizontally();
-    row.centerAlignContent();
-    row.spacing = 8;
+    goalDefs.forEach((goal, idx) => {
+      const g     = byGoal[goal.key] || { tasks: 0, summary: null };
+      const color = new Color(goal.color);
+      const count = g.tasks;
 
-    // Colour dot
-    const dot = row.addStack();
-    dot.layoutHorizontally();
-    dot.centerAlignContent();
-    dot.backgroundColor = color;
-    dot.cornerRadius = 3;
-    dot.size = new Size(3, 26);
+      const row = w.addStack();
+      row.layoutHorizontally();
+      row.centerAlignContent();
+      row.spacing = 8;
 
-    // Label + summary
-    const labelCol = row.addStack();
-    labelCol.layoutVertically();
-    labelCol.spacing = 1;
+      const dot = row.addStack();
+      dot.layoutHorizontally();
+      dot.centerAlignContent();
+      dot.backgroundColor = color;
+      dot.cornerRadius = 3;
+      dot.size = new Size(3, 26);
 
-    const labelTxt = labelCol.addText(GOAL_LABELS[key]);
-    labelTxt.textColor = count > 0 ? C.text : C.muted;
-    labelTxt.font = Font.semiboldSystemFont(11);
-    labelTxt.lineLimit = 1;
+      const labelCol = row.addStack();
+      labelCol.layoutVertically();
+      labelCol.spacing = 1;
 
-    if (g.summary && count > 0) {
-      const sumTxt = labelCol.addText(g.summary);
-      sumTxt.textColor = C.sub;
-      sumTxt.font = Font.systemFont(9);
-      sumTxt.lineLimit = 2;
-    } else if (count === 0) {
-      const nothingTxt = labelCol.addText("No activity");
-      nothingTxt.textColor = C.muted;
-      nothingTxt.font = Font.systemFont(9);
-    }
+      const labelTxt = labelCol.addText(goal.label);
+      labelTxt.textColor = count > 0 ? C.text : C.muted;
+      labelTxt.font = Font.semiboldSystemFont(11);
+      labelTxt.lineLimit = 1;
 
-    row.addSpacer();
+      if (g.summary && count > 0) {
+        const sumTxt = labelCol.addText(g.summary);
+        sumTxt.textColor = C.sub;
+        sumTxt.font = Font.systemFont(9);
+        sumTxt.lineLimit = 2;
+      } else if (count === 0) {
+        const nothingTxt = labelCol.addText("No activity");
+        nothingTxt.textColor = C.muted;
+        nothingTxt.font = Font.systemFont(9);
+      }
 
-    // Task count + mini bar
-    const rightCol = row.addStack();
-    rightCol.layoutVertically();
-    rightCol.centerAlignContent();
-    rightCol.spacing = 3;
+      row.addSpacer();
 
-    const countTxt = rightCol.addText(count > 0 ? `${count}` : "–");
-    countTxt.textColor = count > 0 ? color : C.muted;
-    countTxt.font = Font.boldSystemFont(14);
-    countTxt.rightAlignText();
+      const rightCol = row.addStack();
+      rightCol.layoutVertically();
+      rightCol.centerAlignContent();
+      rightCol.spacing = 3;
 
-    // Mini progress bar (proportional to max tasks today)
-    const barOuter = rightCol.addStack();
-    barOuter.backgroundColor = C.empty;
-    barOuter.cornerRadius = 2;
-    barOuter.size = new Size(36, 3);
-    barOuter.layoutHorizontally();
+      const countTxt = rightCol.addText(count > 0 ? `${count}` : "–");
+      countTxt.textColor = count > 0 ? color : C.muted;
+      countTxt.font = Font.boldSystemFont(14);
+      countTxt.rightAlignText();
 
-    if (count > 0) {
-      const fillW = Math.round((count / max) * 36);
-      const barFill = barOuter.addStack();
-      barFill.backgroundColor = color;
-      barFill.cornerRadius = 2;
-      barFill.size = new Size(fillW, 3);
-    }
+      const barOuter = rightCol.addStack();
+      barOuter.backgroundColor = C.empty;
+      barOuter.cornerRadius = 2;
+      barOuter.size = new Size(36, 3);
+      barOuter.layoutHorizontally();
 
-    if (key !== GOAL_KEYS[GOAL_KEYS.length - 1]) {
-      w.addSpacer(7);
-    }
+      if (count > 0) {
+        const fillW = Math.round((count / maxCount) * 36);
+        const barFill = barOuter.addStack();
+        barFill.backgroundColor = color;
+        barFill.cornerRadius = 2;
+        barFill.size = new Size(fillW, 3);
+      }
+
+      if (idx !== goalDefs.length - 1) w.addSpacer(7);
+    });
   }
 
   w.addSpacer();
@@ -184,11 +179,9 @@ async function buildWidget(data) {
   footer.layoutHorizontally();
   footer.centerAlignContent();
 
-  const totalToday = GOAL_KEYS.reduce((s, k) => s + goals[k].tasks, 0);
+  const totalToday = today.total_tasks ?? 0;
   const footerTxt  = footer.addText(
-    totalToday > 0
-      ? `${totalToday} tasks today`
-      : "Nothing logged yet"
+    totalToday > 0 ? `${totalToday} tasks today` : "Nothing logged yet"
   );
   footerTxt.textColor = C.muted;
   footerTxt.font = Font.systemFont(9);
@@ -220,7 +213,6 @@ const widget = await buildWidget(data);
 if (config.runsInWidget) {
   Script.setWidget(widget);
 } else {
-  // Preview in app
   widget.presentMedium();
 }
 Script.complete();

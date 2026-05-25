@@ -12,7 +12,7 @@ from starlette.requests import Request
 
 from app.config import TRACKER_PASSWORD
 from app.database import run_migrations
-from app.routes import pages, api_log, api_heatmap, api_widget, api_sync
+from app.routes import pages, api_log, api_heatmap, api_widget, api_sync, api_goals
 
 
 @asynccontextmanager
@@ -63,3 +63,4 @@ app.include_router(api_log.router, prefix="/api")
 app.include_router(api_heatmap.router, prefix="/api")
 app.include_router(api_widget.router, prefix="/api")
 app.include_router(api_sync.router, prefix="/api")
+app.include_router(api_goals.router, prefix="/api")

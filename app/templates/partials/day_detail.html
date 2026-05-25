@@ -6,6 +6,8 @@
   <div class="goal-cards">
     {% for goal in goals %}
       {% include "partials/goal_card.html" %}
+    {% else %}
+      <p class="no-activity">No goals defined. Visit <a href="/settings">settings</a> to add one.</p>
     {% endfor %}
   </div>
 {% else %}

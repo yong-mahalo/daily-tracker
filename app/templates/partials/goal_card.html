@@ -1,12 +1,11 @@
-{% set goal_label = config.goal_labels.get(goal, goal) %}
-{% set summary = summaries_by_goal.get(goal) %}
-{% set task_list = tasks_by_goal.get(goal, []) %}
+{% set summary = summaries_by_goal.get(goal.key) %}
+{% set task_list = tasks_by_goal.get(goal.key, []) %}
 
-<div class="goal-card {{ goal }}">
+<div class="goal-card" style="--goal-color: {{ goal.color }}">
   <div class="goal-card-header">
     <div class="goal-card-title">
       <span class="goal-color-dot"></span>
-      {{ goal_label }}
+      {{ goal.label }}
     </div>
     {% if summary %}
       <span class="task-count-chip">{{ summary.task_count }} task{% if summary.task_count != 1 %}s{% endif %}</span>

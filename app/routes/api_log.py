@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from app import database as db
 from app.config import CONFIG
+from app.services import goals as goal_repo
 from app.services import llm as llm_svc
 from app.services import notion_sync
 
@@ -20,6 +21,13 @@ class LogRequest(BaseModel):
 def _process_log(raw_text: str, entry_date: str, background_tasks: BackgroundTasks) -> dict:
     """Core log processing logic shared by both endpoints."""
     model = CONFIG["llm_model"]
+    goals = goal_repo.list_goals()
+    if not goals:
+        raise HTTPException(
+            status_code=400,
+            detail="No goals configured. Visit /settings to create at least one goal.",
+        )
+    valid_keys = {g["key"] for g in goals}
 
     log_id = db.execute(
         "INSERT INTO log_entries (entry_date, raw_text, llm_model) VALUES (?, ?, ?)",
@@ -38,10 +46,10 @@ def _process_log(raw_text: str, entry_date: str, background_tasks: BackgroundTas
         )
         raise HTTPException(status_code=500, detail=f"LLM parse failed: {e}")
 
-    tasks_by_goal: dict[str, int] = {"phd": 0, "nl_jobs": 0, "china_jobs": 0}
+    tasks_by_goal: dict[str, int] = {g["key"]: 0 for g in goals}
     for task in parsed.get("tasks", []):
         goal = task.get("goal")
-        if goal not in tasks_by_goal:
+        if goal not in valid_keys:
             continue
         task_id = db.execute(
             "INSERT INTO tasks (log_entry_id, goal, task_text, category, status, effort_minutes) "
@@ -60,7 +68,7 @@ def _process_log(raw_text: str, entry_date: str, background_tasks: BackgroundTas
 
     summaries = parsed.get("summaries", {})
     for goal, text in summaries.items():
-        if goal not in tasks_by_goal or not text:
+        if goal not in valid_keys or not text:
             continue
         db.execute(
             "INSERT INTO daily_summaries (summary_date, goal, summary_text, task_count) "
@@ -80,6 +88,7 @@ def _process_log(raw_text: str, entry_date: str, background_tasks: BackgroundTas
         "summaries": summaries,
         "general_notes": parsed.get("general_notes"),
         "notion_sync_queued": CONFIG.get("notion_sync_enabled", False),
+        "_goals_meta": goals,
     }
 
 
@@ -103,29 +112,28 @@ def create_log_form(
 
     tbg = result["tasks_by_goal"]
     total = sum(tbg.values())
-    labels = CONFIG.get("goal_labels", {})
-    colors = {"phd": "#60A5FA", "nl_jobs": "#FB923C", "china_jobs": "#F87171"}
+    goals_meta = {g["key"]: g for g in result["_goals_meta"]}
 
     pills = ""
     for goal, count in tbg.items():
         if count:
-            c = colors.get(goal, "#888")
+            meta = goals_meta.get(goal, {"label": goal, "color": "#888"})
             pills += (
-                f'<span style="font-size:0.68rem;font-weight:600;color:{c};'
+                f'<span style="font-size:0.68rem;font-weight:600;color:{meta["color"]};'
                 f'background:rgba(255,255,255,0.06);border-radius:99px;'
                 f'padding:0.15rem 0.55rem;margin-left:0.3rem;">'
-                f'{labels.get(goal, goal)} {count}</span>'
+                f'{meta["label"]} {count}</span>'
             )
 
     rows = ""
     for goal, text in result.get("summaries", {}).items():
-        if text:
-            c = colors.get(goal, "#888")
+        if text and goal in goals_meta:
+            meta = goals_meta[goal]
             rows += (
                 f'<div style="display:flex;gap:0.5rem;align-items:baseline;'
                 f'padding:0.3rem 0;border-top:1px solid rgba(255,255,255,0.06);">'
-                f'<span style="font-size:0.68rem;font-weight:600;color:{c};'
-                f'white-space:nowrap;">{labels.get(goal, goal)}</span>'
+                f'<span style="font-size:0.68rem;font-weight:600;color:{meta["color"]};'
+                f'white-space:nowrap;">{meta["label"]}</span>'
                 f'<span style="font-size:0.78rem;color:rgba(255,255,255,0.6);">{text}</span></div>'
             )
 
@@ -146,7 +154,9 @@ def create_log_form(
 @router.post("/log/json")
 def create_log_json(req: LogRequest, background_tasks: BackgroundTasks):
     entry_date = req.entry_date or str(datetime.date.today())
-    return _process_log(req.raw_text, entry_date, background_tasks)
+    result = _process_log(req.raw_text, entry_date, background_tasks)
+    result.pop("_goals_meta", None)
+    return result
 
 
 @router.get("/log/{log_id}")

@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block content %}
+
+<p class="section-label">Goals</p>
+<p style="font-size:0.78rem;color:var(--text-secondary);line-height:1.55;margin:0 0 1.25rem;">
+  Goals are the parallel tracks the tracker sorts your brain dumps into. Edit, reorder, or add your own.
+  The <em>key</em> is a stable identifier used in the database — once set, leave it alone.
+</p>
+
+<div class="goals-list">
+  {% for goal in goals %}
+    <div class="goal-row" style="--goal-color: {{ goal.color }}">
+      <div class="goal-row-key">{{ goal.key }}</div>
+      <form method="post" action="/api/goals/{{ goal.key }}/update">
+        <div class="goal-form-grid">
+          <div>
+            <label>Label</label>
+            <input type="text" name="label" value="{{ goal.label }}" required>
+          </div>
+          <div>
+            <label>Color</label>
+            <input type="color" name="color" value="{{ goal.color }}">
+          </div>
+        </div>
+        <div style="margin-top:0.55rem;">
+          <label style="display:block;font-size:0.65rem;color:var(--text-muted);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:0.25rem;">Description (optional, shown to the LLM)</label>
+          <input type="text" name="description" value="{{ goal.description or '' }}"
+                 placeholder="e.g. industry roles in Europe; includes language practice"
+                 style="width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:6px;padding:0.4rem 0.55rem;color:rgba(255,255,255,0.88);font-size:0.82rem;font-family:inherit;">
+        </div>
+        <div class="goal-form-grid" style="margin-top:0.55rem;">
+          <div>
+            <label>Notion DB ID (optional)</label>
+            <input type="text" name="notion_db_id" value="{{ goal.notion_db_id or '' }}"
+                   placeholder="32-char Notion database ID">
+          </div>
+          <div>
+            <label>Sort</label>
+            <input type="number" name="sort_order" value="{{ goal.sort_order }}">
+          </div>
+        </div>
+        <div class="goal-row-actions">
+          <button type="submit" class="btn-secondary">Save</button>
+          <button type="submit" class="btn-danger"
+                  formaction="/api/goals/{{ goal.key }}/delete"
+                  onclick="return confirm('Delete goal {{ goal.label }}? Tasks referencing it must be removed first.')">
+            Delete
+          </button>
+        </div>
+      </form>
+    </div>
+  {% else %}
+    <p style="font-size:0.85rem;color:var(--text-muted);">No goals yet — add one below.</p>
+  {% endfor %}
+</div>
+
+<hr class="divider">
+
+<p class="section-label">Add new goal</p>
+<div class="goal-row" style="--goal-color: #888888;">
+  <form method="post" action="/api/goals/form">
+    <div class="goal-form-grid">
+      <div>
+        <label>Key (lowercase, underscores)</label>
+        <input type="text" name="key" pattern="[a-z0-9_]{1,32}" required
+               placeholder="e.g. phd, side_project">
+      </div>
+      <div>
+        <label>Color</label>
+        <input type="color" name="color" value="#3B82F6">
+      </div>
+    </div>
+    <div style="margin-top:0.55rem;">
+      <label style="display:block;font-size:0.65rem;color:var(--text-muted);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:0.25rem;">Label</label>
+      <input type="text" name="label" required placeholder="e.g. PhD Positions"
+             style="width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:6px;padding:0.4rem 0.55rem;color:rgba(255,255,255,0.88);font-size:0.82rem;font-family:inherit;">
+    </div>
+    <div style="margin-top:0.55rem;">
+      <label style="display:block;font-size:0.65rem;color:var(--text-muted);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:0.25rem;">Description (optional)</label>
+      <input type="text" name="description" placeholder="What this track is about"
+             style="width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:6px;padding:0.4rem 0.55rem;color:rgba(255,255,255,0.88);font-size:0.82rem;font-family:inherit;">
+    </div>
+    <div class="goal-form-grid" style="margin-top:0.55rem;">
+      <div>
+        <label>Notion DB ID (optional)</label>
+        <input type="text" name="notion_db_id" placeholder="32-char ID">
+      </div>
+      <div>
+        <label>Sort</label>
+        <input type="number" name="sort_order" value="{{ goals|length }}">
+      </div>
+    </div>
+    <div class="goal-row-actions">
+      <button type="submit" class="btn-secondary">Add goal</button>
+    </div>
+  </form>
+</div>
+
+<hr class="divider">
+<p style="font-size:0.7rem;color:var(--text-muted);">
+  <a href="/" style="color:var(--text-secondary);text-decoration:none;">← Back to tracker</a>
+</p>
+
+{% endblock %}
