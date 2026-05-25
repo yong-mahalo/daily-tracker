@@ -50,3 +50,9 @@ htmlcov/
 
 # Railway / deployment artefacts
 .railway/
+
+# Local-only widget/native artefacts (Mac widget Xcode project + compiled .app
+# contain personal bundle IDs and are not part of the reproducible flow).
+swift/
+widget/DailyTrackerWidget.app/
+*.app/

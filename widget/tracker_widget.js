@@ -15,8 +15,10 @@
 //  does not need editing when you add or rename goals via /settings.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const BASE_URL  = "http://192.168.0.112:8090";  // ← local Mac (same WiFi)
-// const BASE_URL = "https://your-app.up.railway.app";  // ← uncomment after Railway deploy
+// Replace YOUR_MAC_IP with your Mac's local IP (System Settings → Wi-Fi → Details)
+// when running on the same WiFi, or use your Railway URL after deploying.
+const BASE_URL  = "http://YOUR_MAC_IP:8090";
+// const BASE_URL = "https://your-app.up.railway.app";
 const WEB_URL   = BASE_URL;
 
 // ── Static colours (everything except per-goal colours) ──────────────────────
